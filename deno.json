@@ -1,0 +1,10 @@
+{
+  "tasks": {
+    "run": "deno run --allow-read --allow-write --allow-env --allow-run main.ts",
+    "apply": "deno run --allow-read --allow-write --allow-env --allow-run main.ts --apply",
+    "help": "deno run --allow-read --allow-write --allow-env --allow-run main.ts --help"
+  },
+  "compilerOptions": {
+    "strict": true
+  }
+}
