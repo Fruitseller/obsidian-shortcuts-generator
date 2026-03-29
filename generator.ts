@@ -205,6 +205,15 @@ export function getShortcutFilename(game: Game): string {
 }
 
 /**
+ * Erzeugt den Pfad für die unsignierte Zwischendatei.
+ * WICHTIG: Muss auf .shortcut enden, da `shortcuts sign` Dateien
+ * ohne diese Extension ablehnt ("not in the correct format").
+ */
+export function getUnsignedPath(outputPath: string): string {
+  return outputPath.replace(/\.shortcut$/, ".unsigned.shortcut");
+}
+
+/**
  * Generiert eine Shortcut-Preview für Dry-Run
  */
 export function generateShortcutPreview(
@@ -231,7 +240,7 @@ export async function generateShortcut(
 ): Promise<GenerationResult> {
   const filename = getShortcutFilename(game);
   const outputPath = join(config.shortcutsOutputDir, filename);
-  const unsignedPath = `${outputPath}.unsigned`;
+  const unsignedPath = getUnsignedPath(outputPath);
 
   try {
     // 0. Bestehende Dateien löschen für sauberes Überschreiben

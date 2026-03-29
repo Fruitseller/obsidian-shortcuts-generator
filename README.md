@@ -157,4 +157,4 @@ Auf macOS sollte `plutil` standardmäßig verfügbar sein. Falls nicht, werden X
 
 ## License
 
-MIT
+Unlicense

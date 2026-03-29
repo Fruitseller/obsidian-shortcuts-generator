@@ -1,119 +1,55 @@
 # Game Shortcuts Generator - Entwicklungsnotizen
 
-## Status: Signing-Problem - NEUE ERKENNTNISSE (2025-02-01)
+## Status: GELÖST (2026-03-29)
 
-**Wichtig:** Das `shortcuts sign` Tool hat laut Benutzer **gestern noch funktioniert** auf genau diesem Mac (macOS 26.2). Der alte funktionierende Code wurde nicht committed.
+**Das Signing funktioniert vollständig.** Alle 22 Shortcuts werden erfolgreich generiert und signiert.
 
-### Kernfrage
-Was hat sich zwischen "funktioniert" und "funktioniert nicht" geändert?
+### Root Cause
 
-### Getestete Hypothesen (alle FALSCH)
+`shortcuts sign` prüft die **Dateiendung** der Input-Datei. Dateien ohne `.shortcut` Extension werden mit "The file couldn't be opened because it isn't in the correct format" abgelehnt - unabhängig vom Inhalt.
 
-1. ❌ **"macOS shortcuts sign ist generell kaputt"** - FALSCH, es hat gestern noch funktioniert
-2. ❌ **"Cherri Compiler als Alternative"** - Nutzt intern auch `shortcuts sign`
-3. ❌ **"Shortcut Signing Server"** - Ist nur ein Wrapper um `shortcuts sign`
-4. ❌ **"Actions-Struktur ist falsch"** - Actions aus DB extrahiert → sehen identisch aus
+**Alter Code:** `file.shortcut.unsigned` → Signing schlägt fehl
+**Fix:** `file.unsigned.shortcut` → Signing funktioniert
 
-### Wichtigster Test-Befund
-```bash
-# Selbst mit ECHTEN Actions aus der funktionierenden Shortcuts.sqlite:
-python3 -c "import plistlib; ..."  # Workflow mit DB-Actions gebaut
-shortcuts sign --input workflow.bplist --output test.shortcut
-# → "Error: The file couldn't be opened because it isn't in the correct format."
-```
-**Das bedeutet:** Das Problem liegt NICHT an den Actions selbst, sondern am Workflow-Wrapper oder am erwarteten Input-Format.
+Das war das einzige Problem. `shortcuts sign` funktioniert einwandfrei auf macOS 26.x (Tahoe), die XML→Binary-Plist-Pipeline über `plutil -convert binary1` produziert korrekte Dateien.
 
-### Offene Fragen
-1. Welches Format erwartet `shortcuts sign` genau als Input?
-2. Wurde gestern vielleicht ein anderer Weg zum Signieren genutzt?
-3. Gibt es System-Updates die das Verhalten geändert haben könnten?
+### Weitere Erkenntnisse (2026-03-29)
 
-### Nächster sinnvoller Schritt
-- **Unsigned Shortcut von iCloud API herunterladen und analysieren** (siehe unten)
-- Vergleichen mit unserem generierten Format
+- `plutil -replace` und `/usr/libexec/PlistBuddy` ändern intern die Binary-Plist-Struktur, aber `shortcuts sign` akzeptiert auch diese Dateien - solange die Extension `.shortcut` ist
+- Kopien mit `cp` oder `dd` funktionieren ebenfalls - solange die Extension `.shortcut` ist
+- Die früheren Fehlschläge mit Python (`plistlib`) waren vermutlich auch nur ein Extension-Problem
+
+### Frühere falsche Hypothesen
+
+Die folgenden Annahmen aus der Debugging-Phase waren alle falsch:
+- ❌ `shortcuts sign` ist auf Sonoma/Sequoia/Tahoe kaputt
+- ❌ Python's `plistlib` erzeugt inkompatible Binary-Plists
+- ❌ Die Key-Reihenfolge in der Plist ist relevant
+- ❌ Man braucht die Original-Binärdatei von iCloud als Template
 
 ---
 
-## Recherche-Ergebnisse (2025-02-01)
+## Archiv: Frühere Recherche (2025-02-01)
 
-### Verifizierte Fakten
+### Referenz-Datei
+`reference-unsigned.shortcut` - Eine unsigned Shortcut-Datei von iCloud, war nützlich zum Debuggen.
 
-1. **`shortcuts sign` auf Sonoma/Sequoia problematisch**
-   - Laut [Automators Forum](https://talk.automators.fm/t/create-shortcuts-programmatically/18361): "the newest CLI tool appears to have lost this signing ability"
-   - Workaround dort vorgeschlagen: VM mit älterem macOS
-
-2. **Unsigned Shortcuts über iCloud API**
-   - Upload Shortcut zu iCloud → Link: `https://www.icloud.com/shortcuts/XXXX`
-   - URL ändern zu: `https://www.icloud.com/shortcuts/api/records/XXXX`
-   - Feld `fields.shortcut.value.downloadURL` enthält unsigned .shortcut
-   - Quelle: [0xdevalias Gist](https://gist.github.com/0xdevalias/27d9aea9529be7b6ce59055332a94477)
-
-3. **Alte Libraries nicht nutzbar**
-   - [shortcuts-js](https://github.com/joshfarrant/shortcuts-js) - für iOS 12, veraltet
-   - Jellycuts - nicht mehr aktiv gewartet
-   - Cherri Compiler - nutzt intern auch `shortcuts sign`
-
-4. **Shortcut File Format**
-   - Bis iOS 14: Binary Plist
-   - Ab iOS 15: Signiert mit "Apple Encrypted Archives"
-   - Quelle: [Shortcuts File Format](https://zachary7829.github.io/blog/shortcuts/fileformat)
-
-### DURCHBRUCH (2025-02-01)
-
-**`shortcuts sign` funktioniert!** Das Problem ist wie wir die Plist-Datei schreiben.
-
-#### Test-Ergebnis:
-```bash
-# Original iCloud-Datei → FUNKTIONIERT
-shortcuts sign --input icloud-unsigned.shortcut --output test.shortcut  # ✓ 23KB
-
-# Gleiche Datei durch Python geladen und gespeichert → FEHLER
-shortcuts sign --input python-resaved.shortcut --output test.shortcut  # ✗ Format Error
-```
-
-#### Ursache:
-Python's `plistlib` schreibt die Binary Plist anders:
-- **Andere Key-Reihenfolge** (alphabetisch statt original)
-- Möglicherweise andere interne Struktur
-
-#### Referenz-Datei:
-`reference-unsigned.shortcut` - Eine funktionierende unsigned Shortcut-Datei von iCloud.
-
-#### Lösungsansätze:
-1. **plutil statt Python** - `plutil -replace` um einzelne Keys zu ändern ohne die ganze Datei neu zu schreiben
-2. **Key-Reihenfolge in Python kontrollieren** - OrderedDict oder sort_keys Parameter
-3. **Direkte Binary-Manipulation** - Die Bytes kopieren und nur Actions-Teil ersetzen
+### Shortcut File Format
+- Bis iOS 14: Binary Plist
+- Ab iOS 15: Signiert mit "Apple Encrypted Archives"
+- Quelle: [Shortcuts File Format](https://zachary7829.github.io/blog/shortcuts/fileformat)
 
 ---
 
 ## Was funktioniert
 
-1. **Vault-Scanning**: Findet alle 18 Spiele (7 Pokemon, 11 reguläre)
+1. **Vault-Scanning**: Findet alle 22 Spiele (11 Pokemon, 11 reguläre)
 2. **YAML-Parsing**: Extrahiert Frontmatter korrekt
-3. **Workflow-Generierung**: Erstellt korrekte Action-Struktur
+3. **Workflow-Generierung**: Erstellt korrekte Action-Struktur (8 Actions pro Shortcut)
 4. **XML Plist**: Wird korrekt generiert
 5. **Binary Plist Konvertierung**: `plutil -convert binary1` funktioniert
-6. **Unit Tests**: Alle 13 Tests bestehen
-
----
-
-## Das Problem
-
-```
-shortcuts sign --mode anyone --input 'file.unsigned' --output 'file.shortcut'
-Error: The file couldn't be opened because it isn't in the correct format.
-```
-
-### Ursache (laut Web-Recherche)
-
-- Seit iOS 15 / macOS 12 werden Shortcuts mit "Apple Encrypted Archives" signiert
-- Das `shortcuts sign` Tool ist auf **macOS Sonoma und Sequoia bekanntermaßen kaputt**
-- Aktuelles System: **macOS 26.2** (Build 25C56) - wahrscheinlich auch betroffen
-
-### Quellen
-- https://zachary7829.github.io/blog/shortcuts/fileformat
-- https://cherrilang.org/compiler/signing.html
-- https://gist.github.com/0xdevalias/27d9aea9529be7b6ce59055332a94477
+6. **Signing**: `shortcuts sign --mode anyone` funktioniert
+7. **Unit Tests**: Alle 14 Tests bestehen
 
 ---
 
@@ -154,70 +90,13 @@ const AFO_APP_NAME = "Actions For Obsidian";
 
 ---
 
-## Mögliche Lösungen zum Testen
-
-### Option 1: iCloud API
-Laut Recherche kann man unsigned Shortcuts über die iCloud API hochladen:
-1. Shortcut zu iCloud hochladen
-2. Link: `https://www.icloud.com/shortcuts/XXXX`
-3. Ändern zu: `https://www.icloud.com/shortcuts/api/records/XXXX`
-4. `downloadURL` enthält unsigned Shortcut
-
-### Option 2: Älteres macOS
-Das `shortcuts sign` Tool auf älteren macOS-Versionen (vor Sonoma) könnte funktionieren.
-
-### Option 3: iOS Shortcut zum Signieren
-Einen Shortcut auf iOS erstellen, der andere Shortcuts signiert.
-
-### Option 4: Cherri Compiler
-https://cherrilang.org - Ein Compiler für Shortcuts, der auch signieren kann.
-
-### Option 5: Direkt in Shortcuts.sqlite schreiben
-Die Shortcuts-App liest aus `~/Library/Shortcuts/Shortcuts.sqlite`. Theoretisch könnte man direkt dort einfügen, aber das ist riskant.
-
----
-
-## Sandbox-Problem (gelöst)
-
-Claude's Sandbox blockierte Schreibzugriffe auf `~/Downloads/generated-shortcuts/`.
-Lösung: `dangerouslyDisableSandbox: true` bei Bash-Befehlen.
-
----
-
-## Dateien im Projekt
-
-```
-obsidian-shortcuts-generator/
-├── main.ts          # CLI Entry Point
-├── config.ts        # Konfiguration (Vault-Pfad, Output-Dir)
-├── scanner.ts       # Vault Scanner
-├── parser.ts        # YAML Frontmatter Parser
-├── actions.ts       # Workflow Action Builder
-├── generator.ts     # Shortcut File Generator
-├── types.ts         # TypeScript Interfaces
-├── deps.ts          # Inline Dependencies (kein Netzwerk nötig)
-├── test.ts          # Unit Tests (13 Tests)
-└── diagnose.ts      # Diagnose-Script für File-Writing
-```
-
----
-
-## Nächste Schritte
-
-1. **Signing-Alternative finden** - Das macOS `shortcuts sign` Tool funktioniert nicht
-2. **Cherri Compiler testen** - Könnte eine Alternative sein
-3. **iCloud API testen** - Upload und Download von unsigned Shortcuts
-4. **Oder**: Auf iPhone/iPad signieren lassen
-
----
-
-## Befehle zum Testen
+## Befehle
 
 ```bash
 # Dry-Run (zeigt was generiert würde)
 deno run --allow-read --allow-write --allow-env --allow-run main.ts
 
-# Tatsächlich generieren (unsigned Dateien bleiben erhalten)
+# Tatsächlich generieren und signieren
 deno run --allow-read --allow-write --allow-env --allow-run main.ts --apply
 
 # Nur ein Spiel testen
@@ -226,18 +105,3 @@ deno run --allow-read --allow-write --allow-env --allow-run main.ts --apply --fi
 # Unit Tests
 deno test --allow-read --allow-env test.ts
 ```
-
----
-
-## Referenz: Funktionierende Shortcut-Daten
-
-Aus `~/Library/Shortcuts/Shortcuts.sqlite` extrahiert (Play Legenden: Z-A):
-
-```bash
-# Actions extrahieren
-sqlite3 ~/Library/Shortcuts/Shortcuts.sqlite \
-  "SELECT writefile('/tmp/actions.bplist', ZDATA) FROM ZSHORTCUTACTIONS WHERE ZSHORTCUT = 28;"
-plutil -convert xml1 -o - /tmp/actions.bplist
-```
-
-Die extrahierten Actions stimmen strukturell mit unseren generierten überein.

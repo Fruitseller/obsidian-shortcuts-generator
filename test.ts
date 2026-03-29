@@ -17,6 +17,7 @@ function assertExists<T>(value: T, msg?: string): void {
   }
 }
 import { buildGameWorkflow, createWorkflow } from "./actions.ts";
+import { getShortcutFilename, getUnsignedPath } from "./generator.ts";
 import type { Game, Config } from "./types.ts";
 
 // Test-Konfiguration
@@ -203,6 +204,24 @@ Deno.test("Combine Text referenziert korrekte UUIDs", () => {
   const secondItem = textArray[1].Value as Record<string, unknown>;
   const secondAttachments = secondItem.attachmentsByRange as Record<string, Record<string, unknown>>;
   assertEquals(secondAttachments["{0, 1}"].OutputUUID, textUUID);
+});
+
+Deno.test("getUnsignedPath muss .shortcut Extension haben (für shortcuts sign)", () => {
+  const outputPath = "/tmp/test-shortcuts/Play Factorio.shortcut";
+  const unsignedPath = getUnsignedPath(outputPath);
+
+  // shortcuts sign verweigert Dateien ohne .shortcut Extension
+  assertEquals(
+    unsignedPath.endsWith(".shortcut"),
+    true,
+    `Unsigned-Pfad muss auf .shortcut enden, war: ${unsignedPath}`
+  );
+  // Muss sich vom Output-Pfad unterscheiden
+  assertEquals(
+    unsignedPath !== outputPath,
+    true,
+    "Unsigned-Pfad muss sich vom Output-Pfad unterscheiden"
+  );
 });
 
 console.log("Führe Tests aus mit: deno test --allow-read --allow-env test.ts");

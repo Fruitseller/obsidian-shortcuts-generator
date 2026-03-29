@@ -58,6 +58,6 @@ Edit `config.ts` to customize paths:
 - `shortcutsOutputDir` - Where shortcuts are saved
 - `vaultName` - Vault name for Actions plugin
 
-## Known Limitations
+## Signing
 
-The `shortcuts sign` tool is broken on macOS Sonoma/Sequoia. See `NOTES.md` for details and potential workarounds (iCloud API, Cherri Compiler, iOS signing). Unsigned files are generated with `.unsigned` extension for debugging.
+`shortcuts sign` requires the input file to have a `.shortcut` extension. The generator uses `.unsigned.shortcut` as the intermediate filename before signing to `.shortcut`. See `NOTES.md` for the full debugging history.

@@ -4,7 +4,8 @@
  * Diagnostic script to isolate file writing issues
  */
 
-const outputDir = "/Users/my-vault/Downloads/generated-shortcuts";
+const home = Deno.env.get("HOME") || "/tmp";
+const outputDir = `${home}/Downloads/generated-shortcuts`;
 const testName = "diagnostic-test";
 
 console.log("=== Diagnostic Test ===\n");
