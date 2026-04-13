@@ -225,6 +225,40 @@ Deno.test("getUnsignedPath muss .shortcut Extension haben (für shortcuts sign)"
 });
 
 // =============================================================================
+// Generator Tests - Command building (no shell injection)
+// =============================================================================
+
+Deno.test("buildPlistConvertArgs gibt args-Array ohne Shell zurück", async () => {
+  const gen = await import("./generator.ts");
+  const args = gen.buildPlistConvertArgs("/tmp/input.xml", "/tmp/output.shortcut");
+  // Muss ein Array sein, kein einzelner Shell-String
+  assertEquals(Array.isArray(args.args), true, "args sollte ein Array sein");
+  assertEquals(args.command, "plutil", "Kommando sollte plutil sein");
+  // Darf keine Shell-Escaping-Artefakte enthalten
+  for (const arg of args.args) {
+    assertEquals(arg.includes("'\"'\"'"), false, `Arg "${arg}" enthält Shell-Escape-Artefakte`);
+  }
+});
+
+Deno.test("buildSignArgs gibt args-Array ohne Shell zurück", async () => {
+  const gen = await import("./generator.ts");
+  const args = gen.buildSignArgs("/tmp/input.shortcut", "/tmp/output.shortcut");
+  assertEquals(Array.isArray(args.args), true, "args sollte ein Array sein");
+  assertEquals(args.command, "shortcuts", "Kommando sollte shortcuts sein");
+  for (const arg of args.args) {
+    assertEquals(arg.includes("'\"'\"'"), false, `Arg "${arg}" enthält Shell-Escape-Artefakte`);
+  }
+});
+
+Deno.test("buildPlistConvertArgs behandelt Pfade mit Sonderzeichen korrekt", async () => {
+  const gen = await import("./generator.ts");
+  const args = gen.buildPlistConvertArgs("/tmp/it's a test/in.xml", "/tmp/out put/$file.bin");
+  // Pfade müssen exakt durchgereicht werden, ohne Escaping
+  assertEquals(args.args.includes("/tmp/it's a test/in.xml"), true, "Input-Pfad muss unverändert enthalten sein");
+  assertEquals(args.args.includes("/tmp/out put/$file.bin"), true, "Output-Pfad muss unverändert enthalten sein");
+});
+
+// =============================================================================
 // Scanner Tests - scanGameDirectory (unified scanner)
 // =============================================================================
 

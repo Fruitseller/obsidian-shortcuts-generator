@@ -101,23 +101,27 @@ function workflowToXmlPlist(workflow: WFWorkflow): string {
 // Binary Plist Conversion
 // =============================================================================
 
+/** Erstellt die Kommando-Argumente für die plutil-Konvertierung */
+export function buildPlistConvertArgs(
+  xmlPath: string,
+  binaryPath: string
+): { command: string; args: string[] } {
+  return {
+    command: "plutil",
+    args: ["-convert", "binary1", "-o", binaryPath, xmlPath],
+  };
+}
+
 /**
  * Konvertiert XML Plist zu Binary Plist mit plutil (macOS)
- * Verwendet shell für korrekte Pfad-Behandlung
  */
 async function convertToBinaryPlist(
   xmlPath: string,
   binaryPath: string
 ): Promise<void> {
-  // Escape paths for shell
-  const escapedBinaryPath = binaryPath.replace(/'/g, "'\"'\"'");
-  const escapedXmlPath = xmlPath.replace(/'/g, "'\"'\"'");
-  const shellCmd = `plutil -convert binary1 -o '${escapedBinaryPath}' '${escapedXmlPath}'`;
+  const { command: cmd, args } = buildPlistConvertArgs(xmlPath, binaryPath);
 
-  const command = new Deno.Command("sh", {
-    args: ["-c", shellCmd],
-  });
-
+  const command = new Deno.Command(cmd, { args });
   const { success, stderr } = await command.output();
 
   if (!success) {
@@ -145,6 +149,17 @@ async function isPlutiAvailable(): Promise<boolean> {
 // Shortcut Signing
 // =============================================================================
 
+/** Erstellt die Kommando-Argumente für das Shortcut-Signieren */
+export function buildSignArgs(
+  inputPath: string,
+  outputPath: string
+): { command: string; args: string[] } {
+  return {
+    command: "shortcuts",
+    args: ["sign", "--mode", "anyone", "--input", inputPath, "--output", outputPath],
+  };
+}
+
 /**
  * Signiert einen Shortcut mit dem macOS shortcuts CLI Tool
  * Dies ist notwendig, damit der Shortcut importiert werden kann
@@ -156,16 +171,11 @@ async function signShortcut(
   inputPath: string,
   outputPath: string
 ): Promise<void> {
-  // Escape paths for shell
-  const escapedInput = inputPath.replace(/'/g, "'\"'\"'");
-  const escapedOutput = outputPath.replace(/'/g, "'\"'\"'");
-  const shellCmd = `shortcuts sign --mode anyone --input '${escapedInput}' --output '${escapedOutput}'`;
+  const { command: cmd, args } = buildSignArgs(inputPath, outputPath);
 
-  console.error(`[DEBUG] Signing command: ${shellCmd}`);
+  console.error(`[DEBUG] Signing command: ${cmd} ${args.join(" ")}`);
 
-  const command = new Deno.Command("sh", {
-    args: ["-c", shellCmd],
-  });
+  const command = new Deno.Command(cmd, { args });
 
   const { success, stderr, stdout } = await command.output();
 
