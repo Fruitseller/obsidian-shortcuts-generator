@@ -2,7 +2,7 @@
  * Vault Scanner - Durchsucht den Obsidian Vault nach Spieldateien
  */
 
-import { join, basename } from "./deps.ts";
+import { join } from "./deps.ts";
 import type { Config, GameType } from "./types.ts";
 
 /** Scan-Ergebnis für eine gefundene Datei */
@@ -34,34 +34,41 @@ function shouldIgnore(name: string): boolean {
 }
 
 /**
- * Scannt den Vault nach Pokemon-Spielen
- * Struktur: hobbies/videospiele/pokemon/[game-folder]/[game].md
+ * Scannt ein Verzeichnis nach Spiel-Ordnern mit passender Hauptdatei.
+ * Jeder Unterordner wird geprüft auf eine gleichnamige .md Datei.
+ *
+ * @param basePath - Absoluter Pfad zum zu scannenden Verzeichnis
+ * @param vaultPath - Absoluter Pfad zum Vault-Root (für relative Pfade)
+ * @param type - GameType der gefundenen Spiele
+ * @param skipNames - Ordnernamen die übersprungen werden sollen
  */
-async function scanPokemonGames(
-  config: Config
+export async function scanGameDirectory(
+  basePath: string,
+  vaultPath: string,
+  type: GameType,
+  skipNames: string[] = []
 ): Promise<ScannedFile[]> {
   const results: ScannedFile[] = [];
-  const pokemonPath = join(config.vaultPath, config.gamesBasePath, "pokemon");
+  const skipSet = new Set(skipNames);
 
   try {
-    // Durchsuche Pokemon-Ordner
-    for await (const entry of Deno.readDir(pokemonPath)) {
-      if (!entry.isDirectory || shouldIgnore(entry.name)) {
+    for await (const entry of Deno.readDir(basePath)) {
+      if (!entry.isDirectory || shouldIgnore(entry.name) || skipSet.has(entry.name)) {
         continue;
       }
 
-      const gameFolderPath = join(pokemonPath, entry.name);
+      const gameFolderPath = join(basePath, entry.name);
       const mainFile = join(gameFolderPath, `${entry.name}.md`);
 
       try {
         const stat = await Deno.stat(mainFile);
         if (stat.isFile) {
-          const relativePath = mainFile.replace(config.vaultPath + "/", "");
+          const relativePath = mainFile.replace(vaultPath + "/", "");
           results.push({
             absolutePath: mainFile,
             relativePath,
             slug: entry.name,
-            type: "pokemon",
+            type,
           });
         }
       } catch {
@@ -70,58 +77,7 @@ async function scanPokemonGames(
     }
   } catch (error) {
     if (error instanceof Deno.errors.NotFound) {
-      console.warn(`⚠️  Pokemon-Ordner nicht gefunden: ${pokemonPath}`);
-    } else {
-      throw error;
-    }
-  }
-
-  return results;
-}
-
-/**
- * Scannt den Vault nach regulären Spielen
- * Struktur: hobbies/videospiele/[game-folder]/[game].md
- * Ignoriert den pokemon-Ordner
- */
-async function scanRegularGames(
-  config: Config
-): Promise<ScannedFile[]> {
-  const results: ScannedFile[] = [];
-  const gamesPath = join(config.vaultPath, config.gamesBasePath);
-
-  try {
-    for await (const entry of Deno.readDir(gamesPath)) {
-      // Überspringe pokemon-Ordner und ignorierte Einträge
-      if (
-        !entry.isDirectory ||
-        entry.name === "pokemon" ||
-        shouldIgnore(entry.name)
-      ) {
-        continue;
-      }
-
-      const gameFolderPath = join(gamesPath, entry.name);
-      const mainFile = join(gameFolderPath, `${entry.name}.md`);
-
-      try {
-        const stat = await Deno.stat(mainFile);
-        if (stat.isFile) {
-          const relativePath = mainFile.replace(config.vaultPath + "/", "");
-          results.push({
-            absolutePath: mainFile,
-            relativePath,
-            slug: entry.name,
-            type: "game",
-          });
-        }
-      } catch {
-        // Hauptdatei existiert nicht - überspringe
-      }
-    }
-  } catch (error) {
-    if (error instanceof Deno.errors.NotFound) {
-      console.warn(`⚠️  Games-Ordner nicht gefunden: ${gamesPath}`);
+      console.warn(`⚠️  Ordner nicht gefunden: ${basePath}`);
     } else {
       throw error;
     }
@@ -137,8 +93,11 @@ export async function scanVault(config: Config): Promise<{
   files: ScannedFile[];
   stats: ScanStats;
 }> {
-  const pokemonGames = await scanPokemonGames(config);
-  const regularGames = await scanRegularGames(config);
+  const pokemonPath = join(config.vaultPath, config.gamesBasePath, "pokemon");
+  const gamesPath = join(config.vaultPath, config.gamesBasePath);
+
+  const pokemonGames = await scanGameDirectory(pokemonPath, config.vaultPath, "pokemon");
+  const regularGames = await scanGameDirectory(gamesPath, config.vaultPath, "game", ["pokemon"]);
 
   const allFiles = [...pokemonGames, ...regularGames];
 

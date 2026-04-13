@@ -224,4 +224,13 @@ Deno.test("getUnsignedPath muss .shortcut Extension haben (für shortcuts sign)"
   );
 });
 
+// =============================================================================
+// Scanner Tests - scanGameDirectory (unified scanner)
+// =============================================================================
+
+Deno.test("scanGameDirectory ist als Funktion exportiert", async () => {
+  const scanner = await import("./scanner.ts");
+  assertEquals(typeof scanner.scanGameDirectory, "function", "scanGameDirectory sollte exportiert sein");
+});
+
 console.log("Führe Tests aus mit: deno test --allow-read --allow-env test.ts");
