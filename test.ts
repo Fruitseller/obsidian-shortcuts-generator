@@ -225,6 +225,28 @@ Deno.test("getUnsignedPath muss .shortcut Extension haben (für shortcuts sign)"
 });
 
 // =============================================================================
+// Constants Tests - Magic strings extracted
+// =============================================================================
+
+Deno.test("WORKFLOW_CONSTANTS exportiert alle erwarteten Werte", async () => {
+  const { WORKFLOW_CONSTANTS } = await import("./actions.ts");
+  assertExists(WORKFLOW_CONSTANTS, "WORKFLOW_CONSTANTS sollte exportiert sein");
+  // AFO Plugin
+  assertEquals(WORKFLOW_CONSTANTS.AFO_BUNDLE_ID, "co.zottmann.ActionsForObsidian");
+  assertEquals(WORKFLOW_CONSTANTS.AFO_TEAM_ID, "X2WK5Z9VR5");
+  assertEquals(WORKFLOW_CONSTANTS.AFO_APP_NAME, "Actions For Obsidian");
+  // Workflow metadata
+  assertEquals(WORKFLOW_CONSTANTS.CLIENT_VERSION, "2605.0.5");
+  assertEquals(WORKFLOW_CONSTANTS.MIN_CLIENT_VERSION, 1113);
+  assertEquals(WORKFLOW_CONSTANTS.ICON_COLOR, 4282601983);
+  assertEquals(WORKFLOW_CONSTANTS.ICON_GLYPH, 59654);
+  // Content
+  assertEquals(WORKFLOW_CONSTANTS.DATE_FORMAT, "yyyy-MM-dd");
+  assertEquals(WORKFLOW_CONSTANTS.SESSIONS_HEADING, "### Sessions");
+  assertEquals(WORKFLOW_CONSTANTS.DAILY_GAMES_HEADING, "## Videospiele");
+});
+
+// =============================================================================
 // Generator Tests - Command building (no shell injection)
 // =============================================================================
 

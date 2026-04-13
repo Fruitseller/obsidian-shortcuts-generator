@@ -143,12 +143,30 @@ function createCombineTextAction(
 }
 
 // =============================================================================
-// Actions for Obsidian
+// Exported Constants
 // =============================================================================
 
-const AFO_BUNDLE_ID = "co.zottmann.ActionsForObsidian";
-const AFO_TEAM_ID = "X2WK5Z9VR5";
-const AFO_APP_NAME = "Actions For Obsidian";
+/** Alle magischen Werte als benannte Konstanten */
+export const WORKFLOW_CONSTANTS = {
+  // Actions for Obsidian Plugin
+  AFO_BUNDLE_ID: "co.zottmann.ActionsForObsidian",
+  AFO_TEAM_ID: "X2WK5Z9VR5",
+  AFO_APP_NAME: "Actions For Obsidian",
+  // Workflow Metadata
+  CLIENT_VERSION: "2605.0.5",
+  MIN_CLIENT_VERSION: 1113,
+  ICON_COLOR: 4282601983,
+  ICON_GLYPH: 59654,
+  // Content
+  DATE_FORMAT: "yyyy-MM-dd",
+  SESSIONS_HEADING: "### Sessions",
+  DAILY_GAMES_HEADING: "## Videospiele",
+} as const;
+
+// Lokale Aliase für Abwärtskompatibilität im Modul
+const AFO_BUNDLE_ID = WORKFLOW_CONSTANTS.AFO_BUNDLE_ID;
+const AFO_TEAM_ID = WORKFLOW_CONSTANTS.AFO_TEAM_ID;
+const AFO_APP_NAME = WORKFLOW_CONSTANTS.AFO_APP_NAME;
 
 /**
  * Erstellt den AppIntentDescriptor für Actions for Obsidian
@@ -297,7 +315,7 @@ export function buildGameWorkflow(game: Game, config: Config): WFAction[] {
   actions.push(createCurrentDateAction(currentDateUUID));
 
   // 2. Format Date (yyyy-MM-dd)
-  actions.push(createFormatDateAction(currentDateUUID, formattedDateUUID, "yyyy-MM-dd"));
+  actions.push(createFormatDateAction(currentDateUUID, formattedDateUUID, WORKFLOW_CONSTANTS.DATE_FORMAT));
 
   // 3. Text mit Slug ("_slug")
   actions.push(createTextAction(`_${game.slug}`, slugTextUUID));
@@ -349,7 +367,7 @@ export function buildGameWorkflow(game: Game, config: Config): WFAction[] {
       config.vaultName,
       gameFilePath,
       appendContent,
-      "### Sessions",
+      WORKFLOW_CONSTANTS.SESSIONS_HEADING,
       appendToGameUUID
     )
   );
@@ -381,7 +399,7 @@ export function buildGameWorkflow(game: Game, config: Config): WFAction[] {
     createAFOAppendToDailyNoteAction(
       config.vaultName,
       dailyAppendContentFixed,
-      "## Videospiele",
+      WORKFLOW_CONSTANTS.DAILY_GAMES_HEADING,
       appendToDailyUUID
     )
   );
@@ -397,13 +415,13 @@ export function createWorkflow(
   _name: string
 ): WFWorkflow {
   return {
-    WFWorkflowClientVersion: "2605.0.5",
-    WFWorkflowClientRelease: "2605.0.5",
-    WFWorkflowMinimumClientVersion: 1113,
-    WFWorkflowMinimumClientVersionString: "1113",
+    WFWorkflowClientVersion: WORKFLOW_CONSTANTS.CLIENT_VERSION,
+    WFWorkflowClientRelease: WORKFLOW_CONSTANTS.CLIENT_VERSION,
+    WFWorkflowMinimumClientVersion: WORKFLOW_CONSTANTS.MIN_CLIENT_VERSION,
+    WFWorkflowMinimumClientVersionString: String(WORKFLOW_CONSTANTS.MIN_CLIENT_VERSION),
     WFWorkflowIcon: {
-      WFWorkflowIconStartColor: 4282601983,
-      WFWorkflowIconGlyphNumber: 59654,
+      WFWorkflowIconStartColor: WORKFLOW_CONSTANTS.ICON_COLOR,
+      WFWorkflowIconGlyphNumber: WORKFLOW_CONSTANTS.ICON_GLYPH,
     },
     WFWorkflowTypes: ["NCWidget", "WatchKit"],
     WFWorkflowInputContentItemClasses: [
