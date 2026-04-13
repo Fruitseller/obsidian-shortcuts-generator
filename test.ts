@@ -225,6 +225,39 @@ Deno.test("getUnsignedPath muss .shortcut Extension haben (für shortcuts sign)"
 });
 
 // =============================================================================
+// Daily Note Content - kein toter Code
+// =============================================================================
+
+Deno.test("buildGameWorkflow - Daily Note Append hat korrekten Link-Prefix", () => {
+  const actions = buildGameWorkflow(testGame, testConfig);
+  const dailyAppendAction = actions[7];
+  const content = dailyAppendAction.WFWorkflowActionParameters.content as Record<string, unknown>;
+  const value = content.Value as Record<string, unknown>;
+  const str = value.string as string;
+
+  // Der String muss den korrekten Link-Prefix enthalten: - [[slug|displayName]]:  [[￼]]
+  const expectedPrefix = `- [[${testGame.slug}|${testGame.displayName}]]:  [[`;
+  assertEquals(
+    str.startsWith(expectedPrefix),
+    true,
+    `Daily Note content sollte mit "${expectedPrefix}" beginnen, war: "${str}"`
+  );
+  // Variable Placeholder ￼ muss an Position nach dem Prefix stehen
+  const placeholderChar = "\ufffc";
+  assertEquals(
+    str.includes(placeholderChar),
+    true,
+    "Daily Note content muss Variable-Placeholder enthalten"
+  );
+  // Muss mit ]] enden
+  assertEquals(
+    str.endsWith("]]"),
+    true,
+    `Daily Note content sollte mit "]]" enden, war: "${str}"`
+  );
+});
+
+// =============================================================================
 // Constants Tests - Magic strings extracted
 // =============================================================================
 

@@ -377,18 +377,8 @@ export function buildGameWorkflow(game: Game, config: Config): WFAction[] {
 
   // 8. Append to Daily Note (unter ## Videospiele)
   // Content: - [[slug|Display Name]]:  [[Combined Text]]
-  const dailyContent = `- [[${game.slug}|${game.displayName}]]:  [[]]`;
-  const dailyContentPosition = dailyContent.length - 2; // Position vor den letzten ]]
-
-  const dailyAppendContent = createTextWithVariable(
-    dailyContent.slice(0, -2), // Remove last ]]
-    dailyContentPosition - 2,
-    "Kombinierter Text",
-    combinedTextUUID
-  );
-  // Fix: recreate the full content properly
   const dailyLinkPrefix = `- [[${game.slug}|${game.displayName}]]:  [[`;
-  const dailyAppendContentFixed = createTextWithVariable(
+  const dailyAppendContent = createTextWithVariable(
     dailyLinkPrefix + "]]",
     dailyLinkPrefix.length,
     "Kombinierter Text",
@@ -398,7 +388,7 @@ export function buildGameWorkflow(game: Game, config: Config): WFAction[] {
   actions.push(
     createAFOAppendToDailyNoteAction(
       config.vaultName,
-      dailyAppendContentFixed,
+      dailyAppendContent,
       WORKFLOW_CONSTANTS.DAILY_GAMES_HEADING,
       appendToDailyUUID
     )
