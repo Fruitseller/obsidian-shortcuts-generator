@@ -12,11 +12,17 @@ Game Shortcuts Generator is a Deno/TypeScript CLI tool that automates creating A
 # Dry-run (analyze and preview, no files written)
 deno run --allow-read --allow-write --allow-env --allow-run main.ts
 
+# Use a specific vault (overrides config.ts default)
+deno run --allow-read --allow-write --allow-env --allow-run main.ts --vault /path/to/vault
+
 # Generate shortcuts
 deno run --allow-read --allow-write --allow-env --allow-run main.ts --apply
 
 # Filter to specific game
 deno run --allow-read --allow-write --allow-env --allow-run main.ts --filter zelda --apply
+
+# Custom output directory
+deno run --allow-read --allow-write --allow-env --allow-run main.ts --output ~/Desktop/shortcuts --apply
 
 # Run tests
 deno test --allow-read --allow-env test.ts

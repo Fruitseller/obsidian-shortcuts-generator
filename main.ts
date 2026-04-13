@@ -10,7 +10,7 @@
  *   deno run --allow-read --allow-write --allow-env --allow-run main.ts --apply  # Tatsächlich generieren
  */
 
-import { parseArgs } from "./deps.ts";
+import { parseArgs, basename } from "./deps.ts";
 import { loadConfig, validateConfig, ensureOutputDir } from "./config.ts";
 import { scanVault } from "./scanner.ts";
 import { parseGameFiles } from "./parser.ts";
@@ -18,21 +18,22 @@ import {
   generateShortcutPreview,
   generateAllShortcuts,
 } from "./generator.ts";
-import type { CLIOptions, Game, DryRunResult } from "./types.ts";
+import type { CLIOptions, Config, Game, DryRunResult } from "./types.ts";
 
 // =============================================================================
 // CLI Argument Parsing
 // =============================================================================
 
-function parseCliArgs(): CLIOptions {
-  const args = parseArgs(Deno.args, {
+export function parseCliArgs(argv: string[] = Deno.args): CLIOptions {
+  const args = parseArgs(argv, {
     boolean: ["apply", "verbose", "help"],
-    string: ["filter"],
+    string: ["filter", "vault", "vault-name", "output"],
     alias: {
       a: "apply",
       v: "verbose",
       h: "help",
       f: "filter",
+      o: "output",
     },
     default: {
       apply: false,
@@ -46,7 +47,32 @@ function parseCliArgs(): CLIOptions {
     verbose: args.verbose as boolean,
     help: args.help as boolean,
     filter: args.filter as string | undefined,
+    vault: args.vault as string | undefined,
+    vaultName: args["vault-name"] as string | undefined,
+    output: args.output as string | undefined,
   };
+}
+
+/**
+ * Baut Config-Overrides aus CLI-Optionen.
+ * Leitet vaultName aus dem vault-Pfad ab, wenn nicht explizit angegeben.
+ */
+export function buildConfigOverrides(options: CLIOptions): Partial<Config> {
+  const overrides: Partial<Config> = {};
+
+  if (options.vault) {
+    overrides.vaultPath = options.vault;
+    // vaultName aus Pfad ableiten, wenn nicht explizit gesetzt
+    overrides.vaultName = options.vaultName ?? basename(options.vault);
+  } else if (options.vaultName) {
+    overrides.vaultName = options.vaultName;
+  }
+
+  if (options.output) {
+    overrides.shortcutsOutputDir = options.output;
+  }
+
+  return overrides;
 }
 
 // =============================================================================
@@ -75,10 +101,13 @@ USAGE:
   deno run --allow-read --allow-write --allow-env --allow-run main.ts [OPTIONS]
 
 OPTIONS:
-  --apply, -a      Tatsächlich Shortcuts generieren (Standard: Dry-Run)
-  --filter, -f     Nur Spiele mit diesem Slug verarbeiten
-  --verbose, -v    Ausführliche Ausgabe
-  --help, -h       Diese Hilfe anzeigen
+  --apply, -a          Tatsächlich Shortcuts generieren (Standard: Dry-Run)
+  --filter, -f         Nur Spiele mit diesem Slug verarbeiten
+  --vault              Pfad zum Obsidian Vault (überschreibt Config)
+  --vault-name         Name des Vaults (wird aus --vault abgeleitet wenn nicht angegeben)
+  --output, -o         Ausgabeverzeichnis für Shortcuts (überschreibt Config)
+  --verbose, -v        Ausführliche Ausgabe
+  --help, -h           Diese Hilfe anzeigen
 
 BEISPIELE:
   # Dry-Run - Zeigt was generiert würde
@@ -86,6 +115,9 @@ BEISPIELE:
 
   # Tatsächlich generieren
   deno run --allow-read --allow-write --allow-env --allow-run main.ts --apply
+
+  # Bestimmten Vault verwenden
+  deno run --allow-read --allow-write --allow-env --allow-run main.ts --vault /Users/me/vaults/my-vault
 
   # Nur ein bestimmtes Spiel
   deno run --allow-read --allow-write --allow-env --allow-run main.ts --filter zelda --apply
@@ -97,13 +129,14 @@ BEISPIELE:
 // =============================================================================
 
 async function executeDryRun(
-  options: CLIOptions
+  options: CLIOptions,
+  configOverrides: Partial<Config>
 ): Promise<DryRunResult | null> {
   printHeader("🔍 DRY-RUN MODUS");
   console.log("Analysiere Vault und zeige was generiert würde...\n");
 
   // 1. Konfiguration laden
-  const config = loadConfig();
+  const config = loadConfig(configOverrides);
 
   // 2. Konfiguration validieren
   printSubHeader("Phase 1: Konfiguration prüfen");
@@ -209,11 +242,11 @@ async function executeDryRun(
 // Apply Phase
 // =============================================================================
 
-async function executeApply(games: Game[]): Promise<void> {
+async function executeApply(games: Game[], configOverrides: Partial<Config>): Promise<void> {
   printHeader("🚀 APPLY MODUS");
   console.log("Generiere Shortcuts...\n");
 
-  const config = loadConfig();
+  const config = loadConfig(configOverrides);
 
   // Output-Verzeichnis erstellen
   await ensureOutputDir(config);
@@ -266,8 +299,10 @@ async function main(): Promise<void> {
   console.log("🎮 Game Shortcuts Generator");
   console.log("===========================");
 
+  const configOverrides = buildConfigOverrides(options);
+
   // Immer zuerst Dry-Run ausführen
-  const dryRunResult = await executeDryRun(options);
+  const dryRunResult = await executeDryRun(options, configOverrides);
 
   if (!dryRunResult) {
     console.log("\n❌ Dry-Run fehlgeschlagen. Bitte Fehler beheben.");
@@ -281,7 +316,7 @@ async function main(): Promise<void> {
 
   // Bei --apply: Tatsächlich generieren
   if (options.apply) {
-    await executeApply(dryRunResult.parsedGames);
+    await executeApply(dryRunResult.parsedGames, configOverrides);
   }
 
   console.log("\n✅ Fertig!");

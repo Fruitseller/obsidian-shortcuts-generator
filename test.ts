@@ -322,4 +322,78 @@ Deno.test("scanGameDirectory ist als Funktion exportiert", async () => {
   assertEquals(typeof scanner.scanGameDirectory, "function", "scanGameDirectory sollte exportiert sein");
 });
 
+// =============================================================================
+// CLI Options Tests - vault/output overrides
+// =============================================================================
+
+Deno.test("parseCliArgs parst --vault Option", async () => {
+  const { parseCliArgs } = await import("./main.ts");
+  const options = parseCliArgs(["--vault", "/my/vault"]);
+  assertEquals(options.vault, "/my/vault");
+});
+
+Deno.test("parseCliArgs parst --vault-name Option", async () => {
+  const { parseCliArgs } = await import("./main.ts");
+  const options = parseCliArgs(["--vault-name", "my-vault"]);
+  assertEquals(options.vaultName, "my-vault");
+});
+
+Deno.test("parseCliArgs parst --output Option", async () => {
+  const { parseCliArgs } = await import("./main.ts");
+  const options = parseCliArgs(["--output", "/my/output"]);
+  assertEquals(options.output, "/my/output");
+});
+
+Deno.test("parseCliArgs ohne vault-Optionen liefert undefined", async () => {
+  const { parseCliArgs } = await import("./main.ts");
+  const options = parseCliArgs([]);
+  assertEquals(options.vault, undefined);
+  assertEquals(options.vaultName, undefined);
+  assertEquals(options.output, undefined);
+});
+
+Deno.test("buildConfigOverrides erstellt Overrides aus CLI-Optionen", async () => {
+  const { buildConfigOverrides } = await import("./main.ts");
+  const overrides = buildConfigOverrides({
+    apply: false, verbose: false, help: false,
+    vault: "/my/vault",
+    vaultName: "test-vault",
+    output: "/my/output",
+  });
+  assertEquals(overrides.vaultPath, "/my/vault");
+  assertEquals(overrides.vaultName, "test-vault");
+  assertEquals(overrides.shortcutsOutputDir, "/my/output");
+});
+
+Deno.test("buildConfigOverrides ohne Optionen liefert leeres Objekt", async () => {
+  const { buildConfigOverrides } = await import("./main.ts");
+  const overrides = buildConfigOverrides({
+    apply: false, verbose: false, help: false,
+  });
+  assertEquals(overrides.vaultPath, undefined);
+  assertEquals(overrides.vaultName, undefined);
+  assertEquals(overrides.shortcutsOutputDir, undefined);
+});
+
+Deno.test("buildConfigOverrides mit vaultName ohne vault setzt nur vaultName", async () => {
+  const { buildConfigOverrides } = await import("./main.ts");
+  const overrides = buildConfigOverrides({
+    apply: false, verbose: false, help: false,
+    vaultName: "custom-vault",
+  });
+  assertEquals(overrides.vaultPath, undefined);
+  assertEquals(overrides.vaultName, "custom-vault");
+  assertEquals(overrides.shortcutsOutputDir, undefined);
+});
+
+Deno.test("buildConfigOverrides leitet vaultName aus vault-Pfad ab wenn nicht angegeben", async () => {
+  const { buildConfigOverrides } = await import("./main.ts");
+  const overrides = buildConfigOverrides({
+    apply: false, verbose: false, help: false,
+    vault: "/Users/piotr/vaults/piotr",
+  });
+  assertEquals(overrides.vaultPath, "/Users/piotr/vaults/piotr");
+  assertEquals(overrides.vaultName, "piotr");
+});
+
 console.log("Führe Tests aus mit: deno test --allow-read --allow-env test.ts");

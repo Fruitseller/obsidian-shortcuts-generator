@@ -196,4 +196,10 @@ export interface CLIOptions {
   verbose: boolean;
   /** Hilfe anzeigen */
   help: boolean;
+  /** Absoluter Pfad zum Obsidian Vault (überschreibt Config) */
+  vault?: string;
+  /** Name des Vaults (überschreibt Config, wird aus --vault abgeleitet wenn nicht angegeben) */
+  vaultName?: string;
+  /** Ausgabeverzeichnis für Shortcuts (überschreibt Config) */
+  output?: string;
 }
