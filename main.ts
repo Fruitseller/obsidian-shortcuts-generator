@@ -10,7 +10,7 @@
  *   deno run --allow-read --allow-write --allow-env --allow-run main.ts --apply  # Tatsächlich generieren
  */
 
-import { parseArgs, basename } from "./deps.ts";
+import { parseArgs } from "./deps.ts";
 import { loadConfig, validateConfig, ensureOutputDir } from "./config.ts";
 import { scanVault } from "./scanner.ts";
 import { parseGameFiles } from "./parser.ts";
@@ -53,25 +53,11 @@ export function parseCliArgs(argv: string[] = Deno.args): CLIOptions {
   };
 }
 
-/**
- * Baut Config-Overrides aus CLI-Optionen.
- * Leitet vaultName aus dem vault-Pfad ab, wenn nicht explizit angegeben.
- */
 export function buildConfigOverrides(options: CLIOptions): Partial<Config> {
   const overrides: Partial<Config> = {};
-
-  if (options.vault) {
-    overrides.vaultPath = options.vault;
-    // vaultName aus Pfad ableiten, wenn nicht explizit gesetzt
-    overrides.vaultName = options.vaultName ?? basename(options.vault);
-  } else if (options.vaultName) {
-    overrides.vaultName = options.vaultName;
-  }
-
-  if (options.output) {
-    overrides.shortcutsOutputDir = options.output;
-  }
-
+  if (options.vault) overrides.vaultPath = options.vault;
+  if (options.vaultName) overrides.vaultName = options.vaultName;
+  if (options.output) overrides.shortcutsOutputDir = options.output;
   return overrides;
 }
 
@@ -130,15 +116,11 @@ BEISPIELE:
 
 async function executeDryRun(
   options: CLIOptions,
-  configOverrides: Partial<Config>
+  config: Config
 ): Promise<DryRunResult | null> {
   printHeader("🔍 DRY-RUN MODUS");
   console.log("Analysiere Vault und zeige was generiert würde...\n");
 
-  // 1. Konfiguration laden
-  const config = loadConfig(configOverrides);
-
-  // 2. Konfiguration validieren
   printSubHeader("Phase 1: Konfiguration prüfen");
   const validation = await validateConfig(config);
 
@@ -242,11 +224,9 @@ async function executeDryRun(
 // Apply Phase
 // =============================================================================
 
-async function executeApply(games: Game[], configOverrides: Partial<Config>): Promise<void> {
+async function executeApply(games: Game[], config: Config): Promise<void> {
   printHeader("🚀 APPLY MODUS");
   console.log("Generiere Shortcuts...\n");
-
-  const config = loadConfig(configOverrides);
 
   // Output-Verzeichnis erstellen
   await ensureOutputDir(config);
@@ -299,10 +279,10 @@ async function main(): Promise<void> {
   console.log("🎮 Game Shortcuts Generator");
   console.log("===========================");
 
-  const configOverrides = buildConfigOverrides(options);
+  const config = loadConfig(buildConfigOverrides(options));
 
   // Immer zuerst Dry-Run ausführen
-  const dryRunResult = await executeDryRun(options, configOverrides);
+  const dryRunResult = await executeDryRun(options, config);
 
   if (!dryRunResult) {
     console.log("\n❌ Dry-Run fehlgeschlagen. Bitte Fehler beheben.");
@@ -316,7 +296,7 @@ async function main(): Promise<void> {
 
   // Bei --apply: Tatsächlich generieren
   if (options.apply) {
-    await executeApply(dryRunResult.parsedGames, configOverrides);
+    await executeApply(dryRunResult.parsedGames, config);
   }
 
   console.log("\n✅ Fertig!");

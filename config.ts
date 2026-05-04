@@ -2,7 +2,7 @@
  * Konfigurationssystem für den Game Shortcuts Generator
  */
 
-import { join } from "./deps.ts";
+import { join, basename } from "./deps.ts";
 import type { Config } from "./types.ts";
 
 /**
@@ -46,11 +46,13 @@ export function getDefaultConfig(): Config {
 export function loadConfig(overrides?: Partial<Config>): Config {
   const config = getDefaultConfig();
 
-  if (overrides) {
-    return { ...config, ...overrides };
-  }
+  if (!overrides) return config;
 
-  return config;
+  const merged = { ...config, ...overrides };
+  if (overrides.vaultPath && !overrides.vaultName) {
+    merged.vaultName = basename(overrides.vaultPath);
+  }
+  return merged;
 }
 
 /**

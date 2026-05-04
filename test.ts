@@ -18,6 +18,8 @@ function assertExists<T>(value: T, msg?: string): void {
 }
 import { buildGameWorkflow, createWorkflow } from "./actions.ts";
 import { getShortcutFilename, getUnsignedPath } from "./generator.ts";
+import { parseCliArgs, buildConfigOverrides } from "./main.ts";
+import { loadConfig } from "./config.ts";
 import type { Game, Config } from "./types.ts";
 
 // Test-Konfiguration
@@ -326,34 +328,21 @@ Deno.test("scanGameDirectory ist als Funktion exportiert", async () => {
 // CLI Options Tests - vault/output overrides
 // =============================================================================
 
-Deno.test("parseCliArgs parst --vault Option", async () => {
-  const { parseCliArgs } = await import("./main.ts");
-  const options = parseCliArgs(["--vault", "/my/vault"]);
-  assertEquals(options.vault, "/my/vault");
+Deno.test("parseCliArgs parst --vault, --vault-name und --output", () => {
+  const options = parseCliArgs(["--vault", "/v", "--vault-name", "vn", "--output", "/o"]);
+  assertEquals(options.vault, "/v");
+  assertEquals(options.vaultName, "vn");
+  assertEquals(options.output, "/o");
 });
 
-Deno.test("parseCliArgs parst --vault-name Option", async () => {
-  const { parseCliArgs } = await import("./main.ts");
-  const options = parseCliArgs(["--vault-name", "my-vault"]);
-  assertEquals(options.vaultName, "my-vault");
-});
-
-Deno.test("parseCliArgs parst --output Option", async () => {
-  const { parseCliArgs } = await import("./main.ts");
-  const options = parseCliArgs(["--output", "/my/output"]);
-  assertEquals(options.output, "/my/output");
-});
-
-Deno.test("parseCliArgs ohne vault-Optionen liefert undefined", async () => {
-  const { parseCliArgs } = await import("./main.ts");
+Deno.test("parseCliArgs ohne vault-Optionen liefert undefined", () => {
   const options = parseCliArgs([]);
   assertEquals(options.vault, undefined);
   assertEquals(options.vaultName, undefined);
   assertEquals(options.output, undefined);
 });
 
-Deno.test("buildConfigOverrides erstellt Overrides aus CLI-Optionen", async () => {
-  const { buildConfigOverrides } = await import("./main.ts");
+Deno.test("buildConfigOverrides mappt CLI-Felder auf Config-Felder", () => {
   const overrides = buildConfigOverrides({
     apply: false, verbose: false, help: false,
     vault: "/my/vault",
@@ -365,35 +354,15 @@ Deno.test("buildConfigOverrides erstellt Overrides aus CLI-Optionen", async () =
   assertEquals(overrides.shortcutsOutputDir, "/my/output");
 });
 
-Deno.test("buildConfigOverrides ohne Optionen liefert leeres Objekt", async () => {
-  const { buildConfigOverrides } = await import("./main.ts");
-  const overrides = buildConfigOverrides({
-    apply: false, verbose: false, help: false,
-  });
-  assertEquals(overrides.vaultPath, undefined);
-  assertEquals(overrides.vaultName, undefined);
-  assertEquals(overrides.shortcutsOutputDir, undefined);
+Deno.test("loadConfig leitet vaultName aus vaultPath ab, wenn nicht explizit gesetzt", () => {
+  const config = loadConfig({ vaultPath: "/Users/piotr/vaults/piotr" });
+  assertEquals(config.vaultPath, "/Users/piotr/vaults/piotr");
+  assertEquals(config.vaultName, "piotr");
 });
 
-Deno.test("buildConfigOverrides mit vaultName ohne vault setzt nur vaultName", async () => {
-  const { buildConfigOverrides } = await import("./main.ts");
-  const overrides = buildConfigOverrides({
-    apply: false, verbose: false, help: false,
-    vaultName: "custom-vault",
-  });
-  assertEquals(overrides.vaultPath, undefined);
-  assertEquals(overrides.vaultName, "custom-vault");
-  assertEquals(overrides.shortcutsOutputDir, undefined);
-});
-
-Deno.test("buildConfigOverrides leitet vaultName aus vault-Pfad ab wenn nicht angegeben", async () => {
-  const { buildConfigOverrides } = await import("./main.ts");
-  const overrides = buildConfigOverrides({
-    apply: false, verbose: false, help: false,
-    vault: "/Users/piotr/vaults/piotr",
-  });
-  assertEquals(overrides.vaultPath, "/Users/piotr/vaults/piotr");
-  assertEquals(overrides.vaultName, "piotr");
+Deno.test("loadConfig respektiert explizit gesetzten vaultName", () => {
+  const config = loadConfig({ vaultPath: "/Users/piotr/vaults/piotr", vaultName: "custom" });
+  assertEquals(config.vaultName, "custom");
 });
 
 console.log("Führe Tests aus mit: deno test --allow-read --allow-env test.ts");
