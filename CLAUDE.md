@@ -25,7 +25,7 @@ deno run --allow-read --allow-write --allow-env --allow-run main.ts --filter zel
 deno run --allow-read --allow-write --allow-env --allow-run main.ts --output ~/Desktop/shortcuts --apply
 
 # Run tests
-deno test --allow-read --allow-env test.ts
+deno task test
 ```
 
 ## Architecture

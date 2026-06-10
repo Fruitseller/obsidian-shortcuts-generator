@@ -2,7 +2,8 @@
   "tasks": {
     "run": "deno run --allow-read --allow-write --allow-env --allow-run main.ts",
     "apply": "deno run --allow-read --allow-write --allow-env --allow-run main.ts --apply",
-    "help": "deno run --allow-read --allow-write --allow-env --allow-run main.ts --help"
+    "help": "deno run --allow-read --allow-write --allow-env --allow-run main.ts --help",
+    "test": "deno test --allow-read --allow-env test.ts"
   },
   "compilerOptions": {
     "strict": true
